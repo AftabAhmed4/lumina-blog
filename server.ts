@@ -10,8 +10,29 @@ import { initializeApp } from 'firebase/app';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load Firebase Config
-const firebaseConfig = JSON.parse(fs.readFileSync(path.join(__dirname, 'firebase-applet-config.json'), 'utf-8'));
+// Load Firebase Config (supports File or Env Vars for Cloud Run)
+let firebaseConfig: any = {};
+try {
+  const configPath = path.join(__dirname, 'firebase-applet-config.json');
+  if (fs.existsSync(configPath)) {
+    firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    console.log('Firebase config loaded from file.');
+  } else {
+    // Fallback to env vars for Cloud Run deployment safety
+    firebaseConfig = {
+      apiKey: process.env.VITE_FIREBASE_API_KEY,
+      authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+      projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+      storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+      appId: process.env.VITE_FIREBASE_APP_ID,
+      firestoreDatabaseId: process.env.VITE_FIREBASE_DATABASE_ID
+    };
+    console.log('Firebase config loaded from environment variables.');
+  }
+} catch (err) {
+  console.warn('Error loading Firebase config:', err);
+}
 
 // Initialize Firebase Admin (for Server-side privileged operations like Storage)
 // This will use Application Default Credentials (ADC) if running on Cloud Run
@@ -25,7 +46,7 @@ const app = initializeApp(firebaseConfig);
 
 async function startServer() {
   const expressApp = express();
-  const PORT = 3000;
+  const PORT = parseInt(process.env.PORT || '3000');
 
   const bucket = admin.storage().bucket(firebaseConfig.storageBucket);
 
