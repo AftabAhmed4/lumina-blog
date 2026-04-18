@@ -1,18 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
-
-let aiInstance: GoogleGenAI | null = null;
-
-function getGenAI() {
-  if (!aiInstance) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY is missing. Please link your key in the Secrets panel or set it in environment variables.");
-    }
-    aiInstance = new GoogleGenAI({ apiKey });
-  }
-  return aiInstance;
-}
-
 export const BLOG_TYPES = [
   { id: 'tech', label: 'Technology & AI', prompt: 'Write a tech-focused blog post with technical depth and futuristic insights.' },
   { id: 'lifestyle', label: 'Lifestyle & Wellness', prompt: 'Write a lifestyle blog post that is inspiring, warm, and practical.' },
@@ -41,21 +26,24 @@ export async function generateBlogSkeleton(topic: string, blogType: string) {
   `;
 
   try {
-    const ai = getGenAI();
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: [{ parts: [{ text: `${selectedType.prompt}\n\nTopic: ${topic}` }] }],
-      config: {
+    const response = await fetch('/api/ai/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        topic,
+        blogType,
         systemInstruction,
-        responseMimeType: "application/json",
-      },
+        prompt: `${selectedType.prompt}\n\nTopic: ${topic}`
+      })
     });
 
-    return JSON.parse(response.text || '{}');
-  } catch (error: any) {
-    if (error?.message?.includes('API key') || error?.status === 'INVALID_ARGUMENT') {
-      console.error("AI Studio Error: API Key is missing or invalid. Please check the 'Secrets' panel in the AI Studio side menu.");
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.error || 'Failed to generate blog content');
     }
+
+    return await response.json();
+  } catch (error: any) {
     console.error("Gemini Generation Error:", error);
     throw error;
   }
@@ -65,20 +53,23 @@ export async function chatWithAI(messages: { role: 'user' | 'model', parts: { te
   const systemInstruction = "You are the LUMINA AI, a sophisticated editorial assistant. You help users refine their blog ideas, suggest titles, and provide feedback on writing.";
 
   try {
-    const ai = getGenAI();
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: messages,
-      config: {
-        systemInstruction,
-      },
+    const response = await fetch('/api/ai/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages,
+        systemInstruction
+      })
     });
 
-    return response.text;
-  } catch (error: any) {
-    if (error?.message?.includes('API key') || error?.status === 'INVALID_ARGUMENT') {
-      console.error("AI Studio Error: API Key is missing or invalid. Please check the 'Secrets' panel in the AI Studio side menu.");
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.error || 'Failed to chat with AI');
     }
+
+    const result = await response.json();
+    return result.text;
+  } catch (error: any) {
     console.error("Gemini Chat Error:", error);
     throw error;
   }

@@ -6,6 +6,8 @@ import multer from 'multer';
 import fs from 'fs';
 import admin from 'firebase-admin';
 import { initializeApp } from 'firebase/app';
+import { GoogleGenAI } from "@google/genai";
+import fetch from 'node-fetch'; // Standard fetch is available in modern node, but if not we might need this. Actually Node 18+ has it.
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,7 +48,71 @@ const app = initializeApp(firebaseConfig);
 
 async function startServer() {
   const expressApp = express();
+  expressApp.use(express.json()); // Handle JSON bodies
   const PORT = parseInt(process.env.PORT || '3000');
+
+  // --- Gemini AI Setup ---
+  let aiInstance: GoogleGenAI | null = null;
+  function getGenAI() {
+    if (!aiInstance) {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("GEMINI_API_KEY environment variable is missing on the server.");
+      }
+      aiInstance = new GoogleGenAI({ apiKey });
+    }
+    return aiInstance;
+  }
+
+  // --- API Routes ---
+
+  // Health check
+  expressApp.get('/api/health', (req, res) => {
+    res.json({ status: 'ok' });
+  });
+
+  // AI Generation Route
+  expressApp.post('/api/ai/generate', async (req, res) => {
+    try {
+      const { topic, blogType, systemInstruction, prompt } = req.body;
+      const ai = getGenAI();
+
+      const result = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+          responseMimeType: "application/json",
+          systemInstruction,
+        },
+      });
+
+      res.json(JSON.parse(result.text || '{}'));
+    } catch (error: any) {
+      console.error('AI Generation Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // AI Chat Route
+  expressApp.post('/api/ai/chat', async (req, res) => {
+    try {
+      const { messages, systemInstruction } = req.body;
+      const ai = getGenAI();
+
+      const result = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: messages,
+        config: {
+          systemInstruction,
+        },
+      });
+
+      res.json({ text: result.text });
+    } catch (error: any) {
+      console.error('AI Chat Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   const bucket = admin.storage().bucket(firebaseConfig.storageBucket);
 
