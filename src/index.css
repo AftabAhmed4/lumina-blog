@@ -1,0 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;0,800;0,900;1,700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", serif;
+  
+  --color-bg: #FDFCFB; /* Warm Paper */
+  --color-surface: #FFFFFF;
+  --color-primary: #1A1A1A; /* Deep Ink */
+  --color-text-main: #1A1A1A;
+  --color-text-sub: #5F5F5F; /* Soft Graphite */
+  --color-border: #E8E8E1; /* Muted stone */
+  --color-accent: #F8F6F2; /* Creamy accent */
+
+  /* Custom shadows from the design's "polished" feel */
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.03), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
+}
+
+@layer base {
+  .dark {
+    --color-bg: #0C0C0D; /* Midnight */
+    --color-surface: #141416;
+    --color-primary: #F2F2F2;
+    --color-text-main: #F2F2F2;
+    --color-text-sub: #8E9299; /* Metal */
+    --color-border: #222225;
+    --color-accent: #1C1C1E;
+  }
+
+  body {
+    @apply bg-bg text-text-main antialiased font-sans transition-colors duration-300;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif text-text-main tracking-tight;
+  }
+
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full hover:bg-primary/20 transition-colors;
+  }
+}

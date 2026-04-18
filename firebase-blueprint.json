@@ -1,0 +1,49 @@
+{
+  "entities": {
+    "Post": {
+      "title": "Blog Post",
+      "description": "Represents a blog post or publication in LUMINA",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "The title of the post" },
+        "content": { "type": "string", "description": "Markdown content of the post" },
+        "category": { "type": "string", "enum": ["Technology", "Design", "Development", "Lifestyle", "Business", "Health", "Travel", "Creative", "News", "Poetic"] },
+        "imageURL": { "type": "string", "format": "uri" },
+        "audioURL": { "type": "string", "format": "uri" },
+        "status": { "type": "string", "enum": ["published", "draft"] },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhotoURL": { "type": "string" },
+        "likes": { "type": "array", "items": { "type": "string" } },
+        "views": { "type": "number" },
+        "commentsCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "content", "userId", "category"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "A reflections/comment on a specific post",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhotoURL": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["postId", "userId", "text"]
+    }
+  },
+  "firestore": {
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Main collection for publications"
+    },
+    "/posts/{postId}/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Subcollection for post reflections"
+    }
+  }
+}

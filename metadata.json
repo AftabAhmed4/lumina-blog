@@ -1,0 +1,6 @@
+{
+  "name": "Lumina Blog",
+  "description": "A modern, professional blogging platform with AI-powered editorial assistance, comments, and sophisticated Firestore-backed publications.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

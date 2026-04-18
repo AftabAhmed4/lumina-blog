@@ -1,0 +1,45 @@
+{
+  "entities": {
+    "Post": {
+      "title": "Post",
+      "description": "Definition of a blog post",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "The title of the post" },
+        "content": { "type": "string", "description": "The markdown content of the post" },
+        "imageURL": { "type": "string", "description": "URL to the cover image" },
+        "audioURL": { "type": "string", "description": "URL to the optional audio narration" },
+        "createdAt": { "type": "object", "description": "Firestore Timestamp" },
+        "userId": { "type": "string", "description": "ID of the creator" },
+        "userName": { "type": "string", "description": "Name of the creator" },
+        "userPhotoURL": { "type": "string", "description": "Photo URL of the creator" },
+        "category": { "type": "string", "description": "Topic of the post" },
+        "likes": { "type": "array", "description": "List of user IDs who liked the post" }
+      },
+      "required": ["title", "content", "userId", "userName", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User account information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "bio": { "type": "string" }
+      },
+      "required": ["uid", "email", "displayName"]
+    }
+  },
+  "firestore": {
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Collection of blog posts"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles"
+    }
+  }
+}
