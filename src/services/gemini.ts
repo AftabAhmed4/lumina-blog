@@ -1,13 +1,16 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ 
-  apiKey: process.env.GEMINI_API_KEY
-});
+let aiInstance: GoogleGenAI | null = null;
 
-if (!process.env.GEMINI_API_KEY) {
-  console.warn("GEMINI_API_KEY is missing. Please link your key in the Secrets panel.");
-} else {
-  console.log("GEMINI_API_KEY is successfully loaded.");
+function getGenAI() {
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY is missing. Please link your key in the Secrets panel or set it in environment variables.");
+    }
+    aiInstance = new GoogleGenAI({ apiKey });
+  }
+  return aiInstance;
 }
 
 export const BLOG_TYPES = [
@@ -38,6 +41,7 @@ export async function generateBlogSkeleton(topic: string, blogType: string) {
   `;
 
   try {
+    const ai = getGenAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: [{ parts: [{ text: `${selectedType.prompt}\n\nTopic: ${topic}` }] }],
@@ -61,6 +65,7 @@ export async function chatWithAI(messages: { role: 'user' | 'model', parts: { te
   const systemInstruction = "You are the LUMINA AI, a sophisticated editorial assistant. You help users refine their blog ideas, suggest titles, and provide feedback on writing.";
 
   try {
+    const ai = getGenAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: messages,
