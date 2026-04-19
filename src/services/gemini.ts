@@ -12,18 +12,20 @@ export const BLOG_TYPES = [
 function getGenAI() {
   const globalObj = (typeof window !== 'undefined' ? window : globalThis) as any;
   
-  // Try all possible locations where the key might be injected
+  // Try all possible locations and names where the key might be injected
   let apiKey = 
-    (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined) ||
+    (typeof process !== 'undefined' ? (process.env?.MY_GEMINI_API_KEY || process.env?.GEMINI_API_KEY) : undefined) ||
+    globalObj.process?.env?.MY_GEMINI_API_KEY ||
     globalObj.process?.env?.GEMINI_API_KEY ||
+    globalObj.MY_GEMINI_API_KEY ||
     globalObj.GEMINI_API_KEY;
 
   // Extremely important: check if it's the literal string "undefined" which happens during faulty Vite builds
   if (!apiKey || apiKey === 'undefined' || apiKey === 'null' || apiKey.trim() === '') {
-    throw new Error("GEMINI_API_KEY is missing. Please ensure it's provided in the Secrets panel (Side Menu > Settings > Secrets).");
+    throw new Error("API Key is missing. Please ensure GEMINI_API_KEY or MY_GEMINI_API_KEY is provided in the Secrets panel (Side Menu > Settings > Secrets).");
   }
   // Trim and remove any accidental quotes that users might have pasted
-  apiKey = apiKey.trim().replace(/^["'](.+)["']$/, '$1');
+  //  apiKey = apiKey.trim().replace(/^["'](.+)["']$/, '$1');
   
   return new GoogleGenAI({ apiKey });
 }

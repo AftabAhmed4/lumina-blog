@@ -38,10 +38,12 @@ try {
 
 // Initialize Firebase Admin (for Server-side privileged operations like Storage)
 // This will use Application Default Credentials (ADC) if running on Cloud Run
-admin.initializeApp({
-  projectId: firebaseConfig.projectId,
-  storageBucket: firebaseConfig.storageBucket
-});
+if (!admin.apps.length) {
+  admin.initializeApp({
+    projectId: firebaseConfig.projectId,
+    storageBucket: firebaseConfig.storageBucket?.replace('gs://', '')
+  });
+}
 
 // Initialize client-side Firebase (can keep for other uses if needed)
 const app = initializeApp(firebaseConfig);
@@ -106,26 +108,34 @@ async function startServer() {
       try {
         // Try Firebase Storage first using Admin SDK
         if (firebaseConfig.storageBucket) {
-          console.log('Attempting Firebase Admin upload...');
-          // Remove gs:// if present
           const bucketName = firebaseConfig.storageBucket.replace('gs://', '');
+          console.log(`Attempting Firebase Admin upload to bucket: ${bucketName}, path: ${fullPath}`);
+          
           const bucket = admin.storage().bucket(bucketName);
           const file = bucket.file(fullPath);
 
           await file.save(req.file.buffer, {
+            resumable: false, // Better for small files/memory buffers
             metadata: {
               contentType: req.file.mimetype,
-            },
-            public: true
+            }
           });
+          
+          try {
+            await file.makePublic();
+          } catch (aclError: any) {
+            console.warn('Could not make file public via ACL (bucket might have uniform access).', aclError.message);
+          }
 
           // Standard Firebase Storage URL format with alt=media
           const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(fullPath)}?alt=media`;
           console.log('Successfully uploaded to Firebase via Admin:', publicUrl);
           return res.json({ url: publicUrl });
+        } else {
+          console.warn('No storage bucket configured in firebaseConfig');
         }
       } catch (fbError: any) {
-        console.error('Firebase Admin Upload Failed:', fbError.message);
+        console.error('Firebase Admin Upload Failed. Full details:', JSON.stringify(fbError, null, 2));
       }
 
       // Local Storage Fallback
@@ -190,7 +200,21 @@ async function startServer() {
     const distPath = path.join(process.cwd(), 'dist');
     expressApp.use(express.static(distPath));
     expressApp.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      const indexHtmlPath = path.join(distPath, 'index.html');
+      if (fs.existsSync(indexHtmlPath)) {
+        let html = fs.readFileSync(indexHtmlPath, 'utf-8');
+        // Inject keys at runtime so they are available after deployment
+        const keyConfig = `
+          <script>
+            window.MY_GEMINI_API_KEY = "${process.env.MY_GEMINI_API_KEY || ''}";
+            window.GEMINI_API_KEY = "${process.env.GEMINI_API_KEY || ''}";
+          </script>
+        `;
+        html = html.replace('</head>', `${keyConfig}</head>`);
+        res.send(html);
+      } else {
+        res.status(404).send('Not Found');
+      }
     });
   }
 
