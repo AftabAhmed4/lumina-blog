@@ -1,3 +1,5 @@
+import { GoogleGenAI, Type } from "@google/genai";
+
 export const BLOG_TYPES = [
   { id: 'tech', label: 'Technology & AI', prompt: 'Write a tech-focused blog post with technical depth and futuristic insights.' },
   { id: 'lifestyle', label: 'Lifestyle & Wellness', prompt: 'Write a lifestyle blog post that is inspiring, warm, and practical.' },
@@ -7,70 +9,89 @@ export const BLOG_TYPES = [
   { id: 'poetic', label: 'Poetic & Expressive', prompt: 'Write a deeply poetic and expressive blog post, using metaphors and artistic language.' },
 ];
 
+function getGenAI() {
+  let apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey === 'undefined' || apiKey.trim() === '') {
+    throw new Error("GEMINI_API_KEY is missing. Please ensure it's provided in the Secrets panel (Side Menu > Settings > Secrets).");
+  }
+  // Trim and remove any accidental quotes that users might have pasted
+  apiKey = apiKey.trim().replace(/^["'](.+)["']$/, '$1');
+  
+  return new GoogleGenAI({ apiKey });
+}
+
 export async function generateBlogSkeleton(topic: string, blogType: string) {
   const selectedType = BLOG_TYPES.find(t => t.id === blogType) || BLOG_TYPES[0];
+  const ai = getGenAI();
   
   const systemInstruction = `
     You are an expert Editorial Blog Architect for "LUMINA", a premium digital publication.
     Your goal is to help users draft high-quality blog posts.
-    Return the response as a valid JSON object with the following structure:
-    {
-      "title": "A compelling, editorial-style title",
-      "content": "Full markdown content of the blog post. Include an intro, body with subheadings, and a conclusion.",
-      "category": "The most appropriate category",
-      "excerpt": "A brief, punchy intro paragraph for the post card."
-    }
-    
     Constraint: The content MUST be formatted in Markdown.
     Tone: Sophisticated, engaging, and professional.
   `;
 
   try {
-    const response = await fetch('/api/ai/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        topic,
-        blogType,
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [{ role: 'user', parts: [{ text: `${selectedType.prompt}\n\nTopic: ${topic}` }] }],
+      config: {
+        responseMimeType: "application/json",
         systemInstruction,
-        prompt: `${selectedType.prompt}\n\nTopic: ${topic}`
-      })
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING, description: "A compelling, editorial-style title" },
+            content: { type: Type.STRING, description: "Full markdown content of the blog post. Include an intro, body with subheadings, and a conclusion." },
+            category: { type: Type.STRING, description: "The most appropriate category" },
+            excerpt: { type: Type.STRING, description: "A brief, punchy intro paragraph for the post card." }
+          },
+          required: ["title", "content", "category", "excerpt"]
+        }
+      }
     });
 
-    if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.error || 'Failed to generate blog content');
+    if (!response.text) {
+      throw new Error("No content generated from AI");
     }
 
-    return await response.json();
+    return JSON.parse(response.text);
   } catch (error: any) {
     console.error("Gemini Generation Error:", error);
-    throw error;
+    let userMessage = error.message;
+    try {
+      const parsed = JSON.parse(error.message);
+      if (parsed.error?.message) {
+        userMessage = parsed.error.message;
+      }
+    } catch (e) {}
+    throw new Error(userMessage);
   }
 }
 
-export async function chatWithAI(messages: { role: 'user' | 'model', parts: { text: string }[] }[]) {
+export async function chatWithAI(messages: any[]) {
+  const ai = getGenAI();
   const systemInstruction = "You are the LUMINA AI, a sophisticated editorial assistant. You help users refine their blog ideas, suggest titles, and provide feedback on writing.";
 
   try {
-    const response = await fetch('/api/ai/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages,
-        systemInstruction
-      })
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: messages,
+      config: {
+        systemInstruction,
+      }
     });
 
-    if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.error || 'Failed to chat with AI');
-    }
-
-    const result = await response.json();
-    return result.text;
+    return response.text;
   } catch (error: any) {
     console.error("Gemini Chat Error:", error);
-    throw error;
+    let userMessage = error.message;
+    try {
+      const parsed = JSON.parse(error.message);
+      if (parsed.error?.message) {
+        userMessage = parsed.error.message;
+      }
+    } catch (e) {}
+    throw new Error(userMessage);
   }
 }

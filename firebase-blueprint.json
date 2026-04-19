@@ -34,9 +34,26 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["postId", "userId", "text"]
+    },
+    "User": {
+      "title": "User Profile",
+      "description": "Registered creator in the system",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string", "format": "uri" },
+        "lastLogin": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
     }
   },
   "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Registered platform members"
+    },
     "/posts/{postId}": {
       "schema": "Post",
       "description": "Main collection for publications"

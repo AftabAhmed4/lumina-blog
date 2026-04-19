@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Calendar, User, Clock, ChevronRight, MessageSquare, Heart } from 'lucide-react';
 import { Post } from '../types';
-import { formatDate, estimateReadingTime } from '../lib/utils';
+import { formatDate, estimateReadingTime, cleanURL } from '../lib/utils';
 
 interface PostCardProps {
   post: Post;
@@ -21,7 +21,7 @@ export default function PostCard({ post, index = 0 }: PostCardProps) {
     >
       <Link to={`/post/${post.id}`} className="relative aspect-[16/10] w-full overflow-hidden rounded-[24px] bg-accent mb-6 block">
         <img
-          src={post.imageURL || 'https://picsum.photos/seed/blog/800/600'}
+          src={cleanURL(post.imageURL) || 'https://picsum.photos/seed/blog/800/600'}
           alt={post.title}
           referrerPolicy="no-referrer"
           className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 group-hover:rotate-1"

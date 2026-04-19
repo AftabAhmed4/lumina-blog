@@ -31,7 +31,8 @@ export const logout = async () => {
 export const ADMIN_EMAIL = 'aftabahmedcbspakistan@gmail.com';
 
 export const isAdmin = (user: User | null) => {
-  return user?.email === ADMIN_EMAIL;
+  if (!user || !user.email) return false;
+  return user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 };
 
 export const onAuthChange = (callback: (user: User | null) => void) => {

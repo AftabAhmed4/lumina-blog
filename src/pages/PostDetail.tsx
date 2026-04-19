@@ -18,7 +18,7 @@ import ReactMarkdown from 'react-markdown';
 import AudioPlayer from '../components/AudioPlayer';
 import { PostDetailSkeleton } from '../components/LoadingSkeleton';
 import { Post, Comment as CommentType } from '../types';
-import { formatDate, estimateReadingTime, cn } from '../lib/utils';
+import { formatDate, estimateReadingTime, cn, cleanURL } from '../lib/utils';
 import { getPostById, toggleLikePost, incrementPostViews, getCommentsByPost, createComment } from '../lib/firestore';
 import { isAdmin } from '../lib/auth';
 
@@ -184,7 +184,7 @@ export default function PostDetail({ user }: PostDetailProps) {
           className="aspect-[21/9] w-full rounded-[40px] md:rounded-[60px] overflow-hidden shadow-2xl border border-border bg-accent"
         >
           <img 
-            src={post.imageURL || undefined} 
+            src={cleanURL(post.imageURL) || undefined} 
             alt={post.title} 
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
@@ -361,7 +361,7 @@ export default function PostDetail({ user }: PostDetailProps) {
 
       {/* Floating Audio Player */}
       {post.audioURL && (
-        <AudioPlayer src={post.audioURL} title={post.title} />
+        <AudioPlayer src={cleanURL(post.audioURL)} title={post.title} />
       )}
     </div>
   );

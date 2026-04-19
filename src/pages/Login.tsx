@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Zap, Chrome } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { loginWithGoogle } from '../lib/auth';
+import { syncUser } from '../lib/firestore';
 
 interface LoginProps {
   user: any;
@@ -24,7 +25,7 @@ export default function Login({ user }: LoginProps) {
     setError('');
     try {
       await loginWithGoogle();
-      // user check in useEffect will navigate
+      // syncUser is now handled globally in App.tsx
     } catch (err: any) {
       setError(err.message || 'Login failed. Please try again.');
     } finally {

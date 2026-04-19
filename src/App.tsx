@@ -6,6 +6,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { onAuthChange } from './lib/auth';
+import { syncUser } from './lib/firestore';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
@@ -24,7 +25,12 @@ export default function App() {
 
   useEffect(() => {
     const unsubscribe = onAuthChange((user) => {
+      console.log('Auth changed:', user?.email);
       setUser(user);
+      if (user) {
+        // Automatically sync every user profile upon auth detection
+        syncUser(user).catch(console.error);
+      }
       setLoading(false);
     });
     return () => unsubscribe();
@@ -42,8 +48,8 @@ export default function App() {
             <Route path="/post/:id" element={<PostDetail user={user} />} />
             <Route path="/ai-assistant" element={<AIChat user={user} />} />
             
-            {/* Protected Routes (Admin Only) */}
-            <Route element={<ProtectedRoute user={user} loading={loading} adminOnly />}>
+            {/* Protected Routes (Logged In Users) */}
+            <Route element={<ProtectedRoute user={user} loading={loading} />}>
               <Route path="/dashboard" element={<Dashboard user={user} />} />
               <Route path="/create" element={<CreatePost user={user} />} />
               <Route path="/edit/:id" element={<CreatePost user={user} />} />

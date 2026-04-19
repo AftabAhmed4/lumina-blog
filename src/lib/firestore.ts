@@ -11,7 +11,9 @@ import {
   updateDoc,
   deleteDoc,
   onSnapshot,
-  increment
+  increment,
+  setDoc,
+  serverTimestamp
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, auth } from '../firebase';
@@ -34,8 +36,9 @@ export interface FirestoreErrorInfo {
 }
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errorMessage = error instanceof Error ? error.message : String(error);
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errorMessage,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
@@ -43,9 +46,75 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     operationType,
     path
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  console.error('Firestore Error Detailed: ', errInfo);
+  
+  // Throw a human-readable message instead of stringified JSON
+  throw new Error(errorMessage);
 }
+
+export const syncUser = async (user: any) => {
+  const path = `users/${user.uid}`;
+  console.log('Attempting to sync user:', user.email);
+  try {
+    const userRef = doc(db, 'users', user.uid);
+    await setDoc(userRef, {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName || 'Anonymous',
+      photoURL: user.photoURL || '',
+      lastLogin: Timestamp.now(),
+    }, { merge: true });
+    console.log('User synced successfully:', user.email);
+  } catch (error) {
+    console.error('Sync failed for:', user.email, error);
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+};
+
+export const getUsers = (callback: (users: any[]) => void, onError?: (error: any) => void) => {
+  const path = 'users';
+  console.log('Fetching users list...');
+  const q = query(collection(db, path));
+  return onSnapshot(q, (snapshot) => {
+    console.log(`Users fetched. Count: ${snapshot.size}`);
+    const users = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    callback(users);
+  }, (error) => {
+    console.error('getUsers snapshot error:', error);
+    if (onError) onError(error);
+  });
+};
+
+export const deleteUserAccount = async (targetUid: string) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error('Not authenticated');
+    const idToken = await user.getIdToken();
+
+    // 1. Delete Firestore Record
+    await deleteDoc(doc(db, 'users', targetUid));
+
+    // 2. Delete from Firebase Auth via Backend
+    const response = await fetch('/api/admin/delete-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetUid, idToken })
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to delete user account');
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Delete User Error:', error);
+    throw error;
+  }
+};
 
 export const uploadFile = async (file: File, folder: string) => {
   try {

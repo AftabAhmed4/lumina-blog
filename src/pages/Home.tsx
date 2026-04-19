@@ -6,7 +6,7 @@ import PostCard from '../components/PostCard';
 import { PostCardSkeleton } from '../components/LoadingSkeleton';
 import { Post } from '../types';
 import { getPosts } from '../lib/firestore';
-import { formatDate, estimateReadingTime } from '../lib/utils';
+import { formatDate, estimateReadingTime, cleanURL } from '../lib/utils';
 import { isAdmin } from '../lib/auth';
 
 interface HomeProps {
@@ -84,7 +84,7 @@ export default function Home({ user }: HomeProps) {
               className="relative aspect-square md:aspect-[4/5] lg:aspect-square rounded-[40px] overflow-hidden shadow-2xl"
             >
               <img 
-                src={posts[0].imageURL || undefined} 
+                src={cleanURL(posts[0].imageURL) || undefined} 
                 alt="" 
                 className="w-full h-full object-cover transition-transform duration-1000 hover:scale-110" 
                 referrerPolicy="no-referrer"
@@ -123,7 +123,7 @@ export default function Home({ user }: HomeProps) {
           <div className="space-y-20">
             {/* Post Grid with Scroll logic after 6 posts */}
             <div className={`
-              ${!loading && filteredPosts.slice(searchQuery ? 0 : 1).length > 6 ? 'max-h-[1600px] overflow-y-auto pr-6 custom-scrollbar' : ''}
+              ${!loading && filteredPosts.slice(searchQuery ? 0 : 1).length > 6 ? 'max-h-[1600px] overflow-y-auto pr-6' : ''}
               grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-16
             `}>
               {loading ? (

@@ -6,8 +6,8 @@ import multer from 'multer';
 import fs from 'fs';
 import admin from 'firebase-admin';
 import { initializeApp } from 'firebase/app';
-import { GoogleGenAI } from "@google/genai";
-import fetch from 'node-fetch'; // Standard fetch is available in modern node, but if not we might need this. Actually Node 18+ has it.
+import cors from 'cors';
+import fetch from 'node-fetch';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -48,73 +48,26 @@ const app = initializeApp(firebaseConfig);
 
 async function startServer() {
   const expressApp = express();
-  expressApp.use(express.json()); // Handle JSON bodies
+  
+  // Middleware
+  expressApp.use(cors());
+  expressApp.use(express.json({ limit: '50mb' }));
+  expressApp.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
   const PORT = parseInt(process.env.PORT || '3000');
 
-  // --- Gemini AI Setup ---
-  let aiInstance: GoogleGenAI | null = null;
-  function getGenAI() {
-    if (!aiInstance) {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error("GEMINI_API_KEY environment variable is missing on the server.");
-      }
-      aiInstance = new GoogleGenAI({ apiKey });
-    }
-    return aiInstance;
-  }
-
   // --- API Routes ---
-
+  
   // Health check
   expressApp.get('/api/health', (req, res) => {
     res.json({ status: 'ok' });
   });
 
-  // AI Generation Route
-  expressApp.post('/api/ai/generate', async (req, res) => {
-    try {
-      const { topic, blogType, systemInstruction, prompt } = req.body;
-      const ai = getGenAI();
-
-      const result = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: {
-          responseMimeType: "application/json",
-          systemInstruction,
-        },
-      });
-
-      res.json(JSON.parse(result.text || '{}'));
-    } catch (error: any) {
-      console.error('AI Generation Error:', error);
-      res.status(500).json({ error: error.message });
-    }
+  // Configure Multer for memory storage
+  const upload = multer({ 
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
   });
-
-  // AI Chat Route
-  expressApp.post('/api/ai/chat', async (req, res) => {
-    try {
-      const { messages, systemInstruction } = req.body;
-      const ai = getGenAI();
-
-      const result = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: messages,
-        config: {
-          systemInstruction,
-        },
-      });
-
-      res.json({ text: result.text });
-    } catch (error: any) {
-      console.error('AI Chat Error:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  const bucket = admin.storage().bucket(firebaseConfig.storageBucket);
 
   // Ensure local uploads directory exists
   const uploadsDir = path.join(__dirname, 'uploads');
@@ -122,32 +75,40 @@ async function startServer() {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
 
-  // Configure Multer for memory storage
-  const upload = multer({ 
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 20 * 1024 * 1024 } // 20MB limit
-  });
-
   // Serve local uploads
   expressApp.use('/uploads', express.static(uploadsDir));
 
   // API Route for file upload (Proxy via REST API using User's Token with Local Fallback)
-  expressApp.post('/api/upload', upload.single('file'), async (req, res) => {
+  expressApp.post('/api/upload', (req, res, next) => {
+    console.log('Upload request received:', {
+      contentType: req.headers['content-type'],
+      contentLength: req.headers['content-length']
+    });
+    next();
+  }, upload.single('file'), async (req, res) => {
     try {
       if (!req.file) {
+        console.warn('Upload failed: No file found in request');
         return res.status(400).json({ error: 'No file uploaded' });
       }
 
+      console.log('Processing file:', {
+        name: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      });
+
       const idToken = req.body.idToken;
       const folder = req.body.folder || 'misc';
-      const fileName = `${Date.now()}_${req.file.originalname}`;
+      const fileName = `${Date.now()}_${req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
       
       try {
         // Try Firebase Storage first if token exists
-        if (idToken) {
+        if (idToken && firebaseConfig.storageBucket) {
           const filePath = encodeURIComponent(`${folder}/${fileName}`);
           const storageUrl = `https://firebasestorage.googleapis.com/v0/b/${firebaseConfig.storageBucket}/o?uploadType=media&name=${filePath}`;
 
+          console.log('Attempting Firebase upload...');
           const uploadResponse = await fetch(storageUrl, {
             method: 'POST',
             headers: {
@@ -162,31 +123,63 @@ async function startServer() {
             console.log('Successfully uploaded to Firebase:', publicUrl);
             return res.json({ url: publicUrl });
           } else {
-            // Silently log for development, but don't alarm the user
-            console.log('Firebase Storage access restricted (403), using local fallback.');
+            const errorText = await uploadResponse.text();
+            console.log('Firebase Storage rejected (fallback to local):', uploadResponse.status, errorText);
           }
         }
       } catch (fbError) {
-        // Silently log for development
-        console.log('Firebase connection bypassed, using local fallback.');
+        console.log('Firebase connection bypassed (fallback to local).');
       }
 
       // Local Storage Fallback
       const localFilePath = path.join(uploadsDir, fileName);
       fs.writeFileSync(localFilePath, req.file.buffer);
       
-      // Use protocol-relative URL to avoid mixed content issues correctly
       const localUrl = `/uploads/${fileName}`;
-      
-      console.log('File available at:', localUrl);
+      console.log('File saved locally:', localUrl);
       res.json({ url: localUrl });
 
     } catch (error: any) {
-      console.error('Final Upload Error:', error);
+      console.error('Final Upload Error Handler:', error);
       res.status(500).json({ 
-        error: error.message || 'Upload failed'
+        error: error.message || 'Internal server error during upload'
       });
     }
+  });
+
+  // Admin: Delete User account from Auth
+  expressApp.post('/api/admin/delete-user', async (req, res) => {
+    try {
+      const { targetUid, idToken } = req.body;
+      const ADMIN_EMAIL = 'aftabahmedcbspakistan@gmail.com';
+
+      if (!idToken) return res.status(401).json({ error: 'Auth token required' });
+
+      // Verify the requester is the admin
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      if (decodedToken.email !== ADMIN_EMAIL) {
+        return res.status(403).json({ error: 'Unauthorized: Admin access only' });
+      }
+
+      // Delete the user from Firebase Auth
+      await admin.auth().deleteUser(targetUid);
+      
+      console.log(`Admin deleted user account: ${targetUid}`);
+      res.json({ success: true, message: 'User deleted successfully' });
+      
+    } catch (error: any) {
+      console.error('Admin Delete Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Global Error Handler for API routes
+  expressApp.use('/api', (err: any, req: any, res: any, next: any) => {
+    console.error('Global API Error:', err);
+    res.status(err.status || 500).json({
+      error: err.message || 'Internal Server Error',
+      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   });
 
   // Vite middleware for development

@@ -31,22 +31,34 @@
 
   body {
     @apply bg-bg text-text-main antialiased font-sans transition-colors duration-300;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif text-text-main tracking-tight;
   }
 
-  /* Custom Scrollbar */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
+  /* Global Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
   }
 
-  .custom-scrollbar::-webkit-scrollbar-track {
+  ::-webkit-scrollbar-track {
     @apply bg-transparent;
   }
 
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-border rounded-full hover:bg-primary/20 transition-colors;
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border/50 rounded-full hover:bg-primary/20 transition-colors;
+  }
+
+  /* Specific Scrollbar utilities */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
