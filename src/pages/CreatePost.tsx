@@ -191,7 +191,7 @@ export default function CreatePost({ user }: CreatePostProps) {
                 >
                   {imagePreview ? (
                     <>
-                      <img src={imagePreview} alt="Preview" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      <img src={imagePreview} alt="Preview" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                       <div className="absolute inset-0 bg-text-main/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
                         <p className="text-white font-bold uppercase tracking-widest text-xs">Update Image</p>
                       </div>

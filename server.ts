@@ -30,7 +30,12 @@ try {
       appId: process.env.VITE_FIREBASE_APP_ID,
       firestoreDatabaseId: process.env.VITE_FIREBASE_DATABASE_ID
     };
-    console.log('Firebase config loaded from environment variables.');
+    console.log('Firebase config loaded. Keys present:', Object.keys(firebaseConfig).filter(k => !!firebaseConfig[k]));
+    if (firebaseConfig.storageBucket) {
+      console.log('Storage Bucket configured:', firebaseConfig.storageBucket);
+    } else {
+      console.error('CRITICAL: Storage Bucket is NOT configured in Firebase Config!');
+    }
   }
 } catch (err) {
   console.warn('Error loading Firebase config:', err);
@@ -108,34 +113,40 @@ async function startServer() {
       try {
         // Try Firebase Storage first using Admin SDK
         if (firebaseConfig.storageBucket) {
-          const bucketName = firebaseConfig.storageBucket.replace('gs://', '');
+          const bucketName = firebaseConfig.storageBucket.replace('gs://', '').trim();
           console.log(`Attempting Firebase Admin upload to bucket: ${bucketName}, path: ${fullPath}`);
           
-          const bucket = admin.storage().bucket(bucketName);
+          // Use explicit bucket name for absolute clarity
+          const bucket = admin.storage().bucket(bucketName); 
           const file = bucket.file(fullPath);
 
           await file.save(req.file.buffer, {
-            resumable: false, // Better for small files/memory buffers
+            resumable: false,
             metadata: {
               contentType: req.file.mimetype,
             }
           });
           
           try {
+            // Attempt to make public, but don't fail if bucket has Uniform Bucket-Level Access
             await file.makePublic();
           } catch (aclError: any) {
-            console.warn('Could not make file public via ACL (bucket might have uniform access).', aclError.message);
+            console.warn('ACL update failed (likely Uniform Access enabled):', aclError.message);
           }
 
-          // Standard Firebase Storage URL format with alt=media
+          // Generate the standard public URL
           const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(fullPath)}?alt=media`;
-          console.log('Successfully uploaded to Firebase via Admin:', publicUrl);
+          console.log('Successfully uploaded to Firebase:', publicUrl);
           return res.json({ url: publicUrl });
         } else {
-          console.warn('No storage bucket configured in firebaseConfig');
+          console.error('No storage bucket configured in firebaseConfig');
         }
       } catch (fbError: any) {
         console.error('Firebase Admin Upload Failed. Full details:', JSON.stringify(fbError, null, 2));
+        // If it's a 403 or 404, the user might need to enable Storage in Console
+        if (fbError.code === 403 || fbError.code === 404) {
+          console.info('TIP: Please ensure Firebase Storage is enabled in your Firebase Console and you have clicked "Get Started".');
+        }
       }
 
       // Local Storage Fallback

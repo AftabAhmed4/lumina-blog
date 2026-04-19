@@ -62,7 +62,7 @@ export default function Home({ user }: HomeProps) {
               <div className="flex items-center gap-6 pt-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full border border-border overflow-hidden grayscale hover:grayscale-0 transition-all">
-                    <img src={posts[0].userPhotoURL || undefined} alt="" className="w-full h-full object-cover" />
+                    <img src={posts[0].userPhotoURL || undefined} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                   </div>
                   <div className="flex flex-col">
                     <span className="text-xs font-bold uppercase tracking-wider">{posts[0].userName}</span>

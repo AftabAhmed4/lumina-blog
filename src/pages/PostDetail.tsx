@@ -249,7 +249,7 @@ export default function PostDetail({ user }: PostDetailProps) {
         {/* Author Bio Section */}
         <div className="p-10 bg-accent rounded-[40px] border border-border flex flex-col md:flex-row gap-8 items-center text-center md:text-left mb-32">
           <div className="w-24 h-24 rounded-full border-4 border-white shadow-xl overflow-hidden shrink-0 grayscale hover:grayscale-0 transition-all">
-            <img src={post.userPhotoURL || undefined} alt="" className="w-full h-full object-cover" />
+            <img src={post.userPhotoURL || undefined} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
           </div>
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary mb-2">Written By</p>
@@ -323,7 +323,7 @@ export default function PostDetail({ user }: PostDetailProps) {
                   <div className="flex-shrink-0 pt-1">
                     <div className="w-14 h-14 rounded-2xl border border-border overflow-hidden grayscale grayscale-0 hover:grayscale-0 transition-all shadow-md transform group-hover:rotate-3">
                       {comment.userPhotoURL ? (
-                        <img src={comment.userPhotoURL} alt={comment.userName} className="w-full h-full object-cover" />
+                        <img src={comment.userPhotoURL} alt={comment.userName} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-text-sub bg-accent">
                           <User size={24} />
