@@ -10,7 +10,12 @@ export const BLOG_TYPES = [
 ];
 
 function getGenAI() {
-  let apiKey = process.env.GEMINI_API_KEY;
+  // Use a safer way to access the key, checking for both regular and window-injected process.env
+  const globalObj = (typeof window !== 'undefined' ? window : globalThis) as any;
+  const env = (typeof process !== 'undefined' ? process.env : globalObj.process?.env || {}) as any;
+  
+  let apiKey = env.GEMINI_API_KEY || globalObj.GEMINI_API_KEY;
+
   if (!apiKey || apiKey === 'undefined' || apiKey.trim() === '') {
     throw new Error("GEMINI_API_KEY is missing. Please ensure it's provided in the Secrets panel (Side Menu > Settings > Secrets).");
   }

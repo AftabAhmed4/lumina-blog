@@ -116,11 +116,11 @@ async function startServer() {
             metadata: {
               contentType: req.file.mimetype,
             },
-            public: true // Make it public so we can use the direct link
+            public: true
           });
 
-          // The standard Firebase Storage direct URL
-          const publicUrl = `https://storage.googleapis.com/${bucketName}/${fullPath}`;
+          // Standard Firebase Storage URL format with alt=media
+          const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(fullPath)}?alt=media`;
           console.log('Successfully uploaded to Firebase via Admin:', publicUrl);
           return res.json({ url: publicUrl });
         }
