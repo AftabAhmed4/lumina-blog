@@ -10,13 +10,16 @@ export const BLOG_TYPES = [
 ];
 
 function getGenAI() {
-  // Use a safer way to access the key, checking for both regular and window-injected process.env
   const globalObj = (typeof window !== 'undefined' ? window : globalThis) as any;
-  const env = (typeof process !== 'undefined' ? process.env : globalObj.process?.env || {}) as any;
   
-  let apiKey = env.GEMINI_API_KEY || globalObj.GEMINI_API_KEY;
+  // Try all possible locations where the key might be injected
+  let apiKey = 
+    (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined) ||
+    globalObj.process?.env?.GEMINI_API_KEY ||
+    globalObj.GEMINI_API_KEY;
 
-  if (!apiKey || apiKey === 'undefined' || apiKey.trim() === '') {
+  // Extremely important: check if it's the literal string "undefined" which happens during faulty Vite builds
+  if (!apiKey || apiKey === 'undefined' || apiKey === 'null' || apiKey.trim() === '') {
     throw new Error("GEMINI_API_KEY is missing. Please ensure it's provided in the Secrets panel (Side Menu > Settings > Secrets).");
   }
   // Trim and remove any accidental quotes that users might have pasted
