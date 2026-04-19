@@ -101,34 +101,31 @@ async function startServer() {
       const idToken = req.body.idToken;
       const folder = req.body.folder || 'misc';
       const fileName = `${Date.now()}_${req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-      
-      try {
-        // Try Firebase Storage first if token exists
-        if (idToken && firebaseConfig.storageBucket) {
-          const filePath = encodeURIComponent(`${folder}/${fileName}`);
-          const storageUrl = `https://firebasestorage.googleapis.com/v0/b/${firebaseConfig.storageBucket}/o?uploadType=media&name=${filePath}`;
+      const fullPath = `${folder}/${fileName}`;
 
-          console.log('Attempting Firebase upload...');
-          const uploadResponse = await fetch(storageUrl, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${idToken}`,
-              'Content-Type': req.file.mimetype
+      try {
+        // Try Firebase Storage first using Admin SDK
+        if (firebaseConfig.storageBucket) {
+          console.log('Attempting Firebase Admin upload...');
+          // Remove gs:// if present
+          const bucketName = firebaseConfig.storageBucket.replace('gs://', '');
+          const bucket = admin.storage().bucket(bucketName);
+          const file = bucket.file(fullPath);
+
+          await file.save(req.file.buffer, {
+            metadata: {
+              contentType: req.file.mimetype,
             },
-            body: req.file.buffer
+            public: true // Make it public so we can use the direct link
           });
 
-          if (uploadResponse.ok) {
-            const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${firebaseConfig.storageBucket}/o/${filePath}?alt=media`;
-            console.log('Successfully uploaded to Firebase:', publicUrl);
-            return res.json({ url: publicUrl });
-          } else {
-            const errorText = await uploadResponse.text();
-            console.log('Firebase Storage rejected (fallback to local):', uploadResponse.status, errorText);
-          }
+          // The standard Firebase Storage direct URL
+          const publicUrl = `https://storage.googleapis.com/${bucketName}/${fullPath}`;
+          console.log('Successfully uploaded to Firebase via Admin:', publicUrl);
+          return res.json({ url: publicUrl });
         }
-      } catch (fbError) {
-        console.log('Firebase connection bypassed (fallback to local).');
+      } catch (fbError: any) {
+        console.error('Firebase Admin Upload Failed:', fbError.message);
       }
 
       // Local Storage Fallback
