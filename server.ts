@@ -8,6 +8,7 @@ import admin from 'firebase-admin';
 import { initializeApp } from 'firebase/app';
 import cors from 'cors';
 import fetch from 'node-fetch';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -119,11 +120,15 @@ async function startServer() {
           // Use explicit bucket name for absolute clarity
           const bucket = admin.storage().bucket(bucketName); 
           const file = bucket.file(fullPath);
+          const downloadToken = crypto.randomUUID();
 
           await file.save(req.file.buffer, {
             resumable: false,
             metadata: {
               contentType: req.file.mimetype,
+              metadata: {
+                firebaseStorageDownloadTokens: downloadToken
+              }
             }
           });
           
@@ -134,8 +139,8 @@ async function startServer() {
             console.warn('ACL update failed (likely Uniform Access enabled):', aclError.message);
           }
 
-          // Generate the standard public URL
-          const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(fullPath)}?alt=media`;
+          // Generate the standard public URL with the download token
+          const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(fullPath)}?alt=media&token=${downloadToken}`;
           console.log('Successfully uploaded to Firebase:', publicUrl);
           return res.json({ url: publicUrl });
         } else {
