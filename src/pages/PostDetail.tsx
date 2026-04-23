@@ -33,6 +33,13 @@ export default function PostDetail({ user }: PostDetailProps) {
   const [newCommentText, setNewCommentText] = useState('');
   const [loading, setLoading] = useState(true);
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   useEffect(() => {
     if (id) {
@@ -165,8 +172,16 @@ export default function PostDetail({ user }: PostDetailProps) {
                   <Heart size={14} fill={isLiked ? "currentColor" : "none"} />
                   <span>{post.likes?.length || 0}</span>
                 </button>
-                <button className="p-3 bg-accent border border-border rounded-xl text-text-main hover:bg-white dark:hover:bg-black transition-all shadow-sm">
+                <button 
+                  onClick={handleCopyLink}
+                  className="p-3 bg-accent border border-border rounded-xl text-text-main hover:bg-white dark:hover:bg-black transition-all shadow-sm relative group"
+                >
                   <Share2 size={16} />
+                  {copied && (
+                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-text-main text-bg text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-lg whitespace-nowrap shadow-xl animate-in fade-in zoom-in slide-in-from-bottom-2">
+                      Link Copied!
+                    </span>
+                  )}
                 </button>
               </div>
             </div>
@@ -219,9 +234,15 @@ export default function PostDetail({ user }: PostDetailProps) {
                 <button className="flex items-center justify-center p-4 bg-accent rounded-2xl hover:bg-primary hover:text-bg transition-all group">
                   <Facebook size={18} className="group-hover:scale-110 transition-transform" />
                 </button>
-                <button className="col-span-2 flex items-center justify-center gap-3 py-4 bg-accent rounded-2xl hover:bg-primary hover:text-bg transition-all font-black uppercase tracking-widest text-[9px] group">
-                  <LinkIcon size={14} className="group-hover:rotate-12 transition-transform" />
-                  Copy Link
+                <button 
+                  onClick={handleCopyLink}
+                  className={cn(
+                    "col-span-2 flex items-center justify-center gap-3 py-4 rounded-2xl transition-all font-black uppercase tracking-widest text-[9px] group",
+                    copied ? "bg-primary text-bg" : "bg-accent hover:bg-primary hover:text-bg text-text-main"
+                  )}
+                >
+                  <LinkIcon size={14} className={cn("transition-transform", copied ? "scale-110" : "group-hover:rotate-12")} />
+                  {copied ? 'Link Copied!' : 'Copy Link'}
                 </button>
               </div>
             </div>

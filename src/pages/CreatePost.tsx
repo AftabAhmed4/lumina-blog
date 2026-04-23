@@ -51,6 +51,8 @@ export default function CreatePost({ user }: CreatePostProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [existingImageURL, setExistingImageURL] = useState('');
   const [existingAudioURL, setExistingAudioURL] = useState('');
+  const [originalPostData, setOriginalPostData] = useState<any>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -59,6 +61,7 @@ export default function CreatePost({ user }: CreatePostProps) {
     if (id) {
       getPostById(id).then(post => {
         if (post) {
+          setOriginalPostData(post);
           setTitle(post.title);
           setContent(post.content);
           setCategory(post.category as any || 'Technology');
@@ -73,9 +76,8 @@ export default function CreatePost({ user }: CreatePostProps) {
     }
   }, [id]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+  const processImageFile = (file: File) => {
+    if (file && file.type.startsWith('image/')) {
       setImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -83,6 +85,28 @@ export default function CreatePost({ user }: CreatePostProps) {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processImageFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const file = e.dataTransfer.files?.[0];
+    if (file) processImageFile(file);
   };
 
   const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -117,9 +141,9 @@ export default function CreatePost({ user }: CreatePostProps) {
         imageURL,
         audioURL,
         status,
-        userId: user.uid,
-        userName: user.displayName || 'Anonymous',
-        userPhotoURL: user.photoURL || '',
+        userId: id && originalPostData ? originalPostData.userId : user.uid,
+        userName: id && originalPostData ? originalPostData.userName : (user.displayName || 'Anonymous'),
+        userPhotoURL: id && originalPostData ? originalPostData.userPhotoURL : (user.photoURL || ''),
       };
 
       if (id) {
@@ -187,7 +211,14 @@ export default function CreatePost({ user }: CreatePostProps) {
                 <label className="text-[11px] font-bold uppercase tracking-widest text-text-sub ml-1">Featured Cover</label>
                 <div 
                   onClick={() => imageInputRef.current?.click()}
-                  className="relative h-80 w-full rounded-xl border border-border bg-accent hover:border-primary/50 transition-all cursor-pointer overflow-hidden flex flex-col items-center justify-center p-6 text-center group"
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`relative h-80 w-full rounded-xl border-2 border-dashed transition-all cursor-pointer overflow-hidden flex flex-col items-center justify-center p-6 text-center group ${
+                    isDragging 
+                    ? "border-primary bg-primary/5 scale-[1.02]" 
+                    : "border-border bg-accent hover:border-primary/50"
+                  }`}
                 >
                   {imagePreview ? (
                     <>

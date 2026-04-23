@@ -65,10 +65,15 @@ export default function Dashboard({ user }: DashboardProps) {
     setLoading(true);
     
     // Posts listener
-    const unsubscribePosts = getUserPosts(user.uid, (data) => {
-      setPosts(data);
-      if (activeTab === 'posts') setLoading(false);
-    });
+    const unsubscribePosts = userIsAdmin 
+      ? getPosts((data) => {
+          setPosts(data);
+          if (activeTab === 'posts') setLoading(false);
+        })
+      : getUserPosts(user.uid, (data) => {
+          setPosts(data);
+          if (activeTab === 'posts') setLoading(false);
+        });
 
     // Users listener (if admin)
     let unsubscribeUsers = () => {};
@@ -262,6 +267,7 @@ export default function Dashboard({ user }: DashboardProps) {
                   <thead>
                     <tr className="bg-accent">
                       <th className="px-8 py-4 text-[11px] font-bold uppercase tracking-wider text-text-sub">Story</th>
+                      {userIsAdmin && <th className="px-8 py-4 text-[11px] font-bold uppercase tracking-wider text-text-sub">Author</th>}
                       <th className="px-8 py-4 text-[11px] font-bold uppercase tracking-wider text-text-sub">Stats</th>
                       <th className="px-8 py-4 text-[11px] font-bold uppercase tracking-wider text-text-sub">Date</th>
                       <th className="px-8 py-4 text-[11px] font-bold uppercase tracking-wider text-text-sub text-right">Settings</th>
@@ -282,7 +288,7 @@ export default function Dashboard({ user }: DashboardProps) {
                         <td className="px-8 py-6">
                           <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-lg overflow-hidden bg-accent shrink-0">
-                              <img src={cleanURL(post.imageURL) || undefined} alt={post.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              <img src={cleanURL(post.imageURL) || undefined} alt={post.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                             </div>
                             <div className="flex flex-col">
                               <span className="font-bold text-text-main max-w-xs truncate">{post.title}</span>
@@ -292,6 +298,19 @@ export default function Dashboard({ user }: DashboardProps) {
                             </div>
                           </div>
                         </td>
+                        {userIsAdmin && (
+                          <td className="px-8 py-6">
+                            <div className="flex items-center gap-2">
+                              <img 
+                                src={post.userPhotoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${post.userName}`} 
+                                className="w-6 h-6 rounded-full border border-border" 
+                                alt=""
+                                referrerPolicy="no-referrer"
+                              />
+                              <span className="text-xs font-bold text-text-main">{post.userName}</span>
+                            </div>
+                          </td>
+                        )}
                         <td className="px-8 py-6">
                           <div className="flex items-center gap-3 text-xs font-semibold text-text-sub">
                             <span className="flex items-center gap-1"><Eye size={14} /> {post.views || 0}</span>
@@ -340,9 +359,17 @@ export default function Dashboard({ user }: DashboardProps) {
                         </div>
                         <div className="flex flex-col">
                           <h3 className="font-bold text-sm text-text-main line-clamp-1">{post.title}</h3>
-                          <p className="text-[10px] text-text-sub font-medium">
-                            {formatDate(post.createdAt?.toDate ? post.createdAt.toDate() : new Date())}
-                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-[10px] text-text-sub font-medium">
+                              {formatDate(post.createdAt?.toDate ? post.createdAt.toDate() : new Date())}
+                            </p>
+                            {userIsAdmin && (
+                              <>
+                                <span className="w-1 h-1 rounded-full bg-border"></span>
+                                <span className="text-[10px] text-primary font-bold">{post.userName}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                       {post.status === 'draft' && (

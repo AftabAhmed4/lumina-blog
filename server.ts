@@ -117,13 +117,16 @@ async function startServer() {
           const bucketName = firebaseConfig.storageBucket.replace('gs://', '').trim();
           console.log(`Attempting Firebase Admin upload to bucket: ${bucketName}, path: ${fullPath}`);
           
-          // Use explicit bucket name for absolute clarity
-          const bucket = admin.storage().bucket(bucketName); 
+          // Using the default bucket from initializeApp is often more reliable
+          const bucket = admin.storage().bucket(); 
           const file = bucket.file(fullPath);
           const downloadToken = crypto.randomUUID();
 
+          console.log(`Using default bucket for upload to path: ${fullPath}`);
+
           await file.save(req.file.buffer, {
             resumable: false,
+            public: true, // Try to set public directly during save
             metadata: {
               contentType: req.file.mimetype,
               metadata: {
@@ -147,7 +150,17 @@ async function startServer() {
           console.error('No storage bucket configured in firebaseConfig');
         }
       } catch (fbError: any) {
-        console.error('Firebase Admin Upload Failed. Full details:', JSON.stringify(fbError, null, 2));
+        console.error('Firebase Admin Upload Failed. Error:', fbError.message);
+        
+        // Deep log for Gaxios errors which contain nested details
+        if (fbError.response?.data) {
+          console.error('Detailed API Response:', JSON.stringify(fbError.response.data, null, 2));
+        } else {
+          console.error('Full Error Details:', JSON.stringify(fbError, null, 2));
+        }
+        
+        if (fbError.stack) console.error('Stack:', fbError.stack);
+        
         // If it's a 403 or 404, the user might need to enable Storage in Console
         if (fbError.code === 403 || fbError.code === 404) {
           console.info('TIP: Please ensure Firebase Storage is enabled in your Firebase Console and you have clicked "Get Started".');

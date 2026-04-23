@@ -57,9 +57,10 @@ service cloud.firestore {
       allow update: if (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views'])) ||
                     (isAuthenticated() && (
                       isOwner(resource.data.userId) || 
+                      isAdmin() ||
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'views', 'commentsCount'])
                     ));
-      allow delete: if isOwner(resource.data.userId);
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
 
       match /comments/{commentId} {
         allow read: if true;

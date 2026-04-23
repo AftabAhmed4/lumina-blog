@@ -50,7 +50,7 @@ export default function Home({ user }: HomeProps) {
               </div>
               
               <Link to={`/post/${posts[0].id}`} className="block group">
-                <h1 className="text-4xl md:text-6xl lg:text-7xl font-serif font-bold leading-[0.95] mb-8 group-hover:italic transition-all duration-500">
+                <h1 className="text-xl md:text-xl lg:text-4xl font-serif font-bold leading-[0.95] mb-8 group-hover:italic transition-all duration-500">
                   {posts[0].title}
                 </h1>
               </Link>
